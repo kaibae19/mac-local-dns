@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/bin/sh
 # mac-local-dns - Fix macOS DNS for local domains when on VPN
-# https://github.com/kaibae/mac-local-dns
+# https://github.com/kaibae19/mac-local-dns
 
 RESOLVER_DIR="/etc/resolver"
 
@@ -12,62 +12,67 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 show_resolvers() {
-    echo -e "${CYAN}=== Local DNS Resolvers ===${NC}"
-    if [[ -d "$RESOLVER_DIR" ]] && [[ -n "$(ls -A $RESOLVER_DIR 2>/dev/null)" ]]; then
+    echo "${CYAN}=== Local DNS Resolvers ===${NC}"
+    if [ -d "$RESOLVER_DIR" ] && [ -n "$(ls -A $RESOLVER_DIR 2>/dev/null)" ]; then
         for f in "$RESOLVER_DIR"/*; do
-            [[ -f "$f" ]] || continue
+            [ -f "$f" ] || continue
             domain=$(basename "$f")
             dns=$(grep nameserver "$f" | awk '{print $2}')
-            echo -e "  ${GREEN}$domain${NC} → $dns"
+            echo "  ${GREEN}$domain${NC} → $dns"
         done
     else
-        echo -e "  ${YELLOW}(none)${NC}"
+        echo "  ${YELLOW}(none)${NC}"
     fi
     echo ""
 }
 
 add_domain() {
-    read -p "Domain: " domain
-    [[ -z "$domain" ]] && return
+    printf "Domain: "
+    read domain
+    [ -z "$domain" ] && return
     
-    read -p "DNS server [192.168.1.1]: " dns
+    printf "DNS server [192.168.1.1]: "
+    read dns
     dns="${dns:-192.168.1.1}"
     
     sudo mkdir -p "$RESOLVER_DIR"
     echo "nameserver $dns" | sudo tee "$RESOLVER_DIR/$domain" > /dev/null
-    echo -e "${GREEN}✓${NC} Added ${CYAN}$domain${NC} → $dns"
+    echo "${GREEN}✓${NC} Added ${CYAN}$domain${NC} → $dns"
 }
 
 remove_domain() {
-    read -p "Domain to remove: " domain
-    [[ -z "$domain" ]] && return
+    printf "Domain to remove: "
+    read domain
+    [ -z "$domain" ] && return
     
-    if [[ -f "$RESOLVER_DIR/$domain" ]]; then
+    if [ -f "$RESOLVER_DIR/$domain" ]; then
         sudo rm -f "$RESOLVER_DIR/$domain"
-        echo -e "${GREEN}✓${NC} Removed ${CYAN}$domain${NC}"
+        echo "${GREEN}✓${NC} Removed ${CYAN}$domain${NC}"
     else
-        echo -e "${RED}✗${NC} Not found: $domain"
+        echo "${RED}✗${NC} Not found: $domain"
     fi
 }
 
 interactive_menu() {
-    echo -e "${CYAN}"
+    echo "${CYAN}"
     echo "╔═══════════════════════════════════════╗"
     echo "║   macOS Local DNS Resolver Manager    ║"
     echo "╚═══════════════════════════════════════╝"
-    echo -e "${NC}"
+    echo "${NC}"
     
     while true; do
         echo ""
         show_resolvers
-        echo -e "${CYAN}[A]${NC}dd  ${CYAN}[R]${NC}emove  ${CYAN}[Q]${NC}uit"
-        read -p "> " choice
+        echo "${CYAN}[A]${NC}dd  ${CYAN}[R]${NC}emove  ${CYAN}[Q]${NC}uit"
+        printf "> "
+        read choice
         
-        case "${choice,,}" in
+        choice=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
+        case "$choice" in
             a) add_domain ;;
             r) remove_domain ;;
             q) exit 0 ;;
-            *) echo -e "${RED}Invalid option${NC}" ;;
+            *) echo "${RED}Invalid option${NC}" ;;
         esac
     done
 }
@@ -75,13 +80,13 @@ interactive_menu() {
 # CLI or interactive
 case "$1" in
     add)
-        [[ -z "$2" || -z "$3" ]] && { echo "Usage: $0 add <domain> <dns>"; exit 1; }
+        [ -z "$2" ] || [ -z "$3" ] && { echo "Usage: $0 add <domain> <dns>"; exit 1; }
         sudo mkdir -p "$RESOLVER_DIR"
         echo "nameserver $3" | sudo tee "$RESOLVER_DIR/$2" > /dev/null
         echo "Added $2 → $3"
         ;;
     remove|rm)
-        [[ -z "$2" ]] && { echo "Usage: $0 remove <domain>"; exit 1; }
+        [ -z "$2" ] && { echo "Usage: $0 remove <domain>"; exit 1; }
         sudo rm -f "$RESOLVER_DIR/$2" && echo "Removed $2"
         ;;
     list|status|ls)
